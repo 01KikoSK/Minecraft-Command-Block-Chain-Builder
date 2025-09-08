@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Command-Block Chain Builder (Java 1.20+)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="p-8 flex items-center justify-center min-h-screen">
+    <div id="app" class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-6xl">
+        <h1 class="text-3xl font-bold mb-6 text-center text-white">Minecraft Command-Block Chain Builder (Java 1.20+)</h1>
+        
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-700 mb-6">
+            <button id="builder-tab-btn" class="py-2 px-4 font-semibold text-white rounded-t-lg bg-gray-700 hover:bg-gray-600 transition-colors duration-200">
+                Chain Builder
+            </button>
+            <button id="json-tab-btn" class="py-2 px-4 font-semibold text-gray-400 hover:text-white transition-colors duration-200">
+                JSON Text Helper
+            </button>
+        </div>
+
+        <!-- Tab Content - Builder -->
+        <div id="builder-tab-content" class="tab-content active flex space-x-6">
+            <div class="flex-1">
+                <!-- Settings Panel -->
+                <div class="bg-gray-700 p-6 rounded-lg mb-6">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Placement Settings</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        <div>
+                            <label for="origin-input" class="block text-sm font-medium text-gray-300 mb-1">Origin (x y z)</label>
+                            <input type="text" id="origin-input" value="~ ~ ~" class="w-full p-2 rounded-md bg-gray-900 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                        </div>
+                        <div>
+                            <label for="facing-select" class="block text-sm font-medium text-gray-300 mb-1">Facing</label>
+                            <select id="facing-select" class="w-full p-2 rounded-md bg-gray-900 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                                <option value="east">east</option>
+                                <option value="west">west</option>
+                                <option value="south">south</option>
+                                <option value="north">north</option>
+                                <option value="up">up</option>
+                                <option value="down">down</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2 md:col-span-1 flex items-end">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="track-output-checkbox" class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500 checked:bg-blue-500">
+                                <span class="text-sm text-gray-300">Track Output</span>
+                            </label>
+                        </div>
+                        <div class="col-span-2 md:col-span-1 flex items-end">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="place-lever-checkbox" checked class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500 checked:bg-blue-500">
+                                <span class="text-sm text-gray-300">Place Lever</span>
+                            </label>
+                        </div>
+                        <div class="col-span-2 md:col-span-1 flex items-end">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="clear-area-checkbox" checked class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500 checked:bg-blue-500">
+                                <span class="text-sm text-gray-300">Clear Area</span>
+                            </label>
+                        </div>
+                        <div class="col-span-2 md:col-span-1 flex items-end">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="clipboard-auto-checkbox" checked class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500 checked:bg-blue-500">
+                                <span class="text-sm text-gray-300">Copy to Clipboard</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Steps List -->
+                <div class="bg-gray-700 p-6 rounded-lg overflow-x-auto">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Steps</h2>
+                    <table class="w-full text-sm text-left text-gray-400">
+                        <thead class="text-xs text-gray-400 uppercase bg-gray-900">
+                            <tr>
+                                <th scope="col" class="py-3 px-6">Type</th>
+                                <th scope="col" class="py-3 px-6">Conditional</th>
+                                <th scope="col" class="py-3 px-6">Activation</th>
+                                <th scope="col" class="py-3 px-6">Delay</th>
+                                <th scope="col" class="py-3 px-6">Command</th>
+                            </tr>
+                        </thead>
+                        <tbody id="steps-table-body">
+                            <!-- Steps will be dynamically added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Editor Panel -->
+            <div class="w-1/3 bg-gray-700 p-6 rounded-lg flex flex-col space-y-4">
+                <h2 class="text-xl font-semibold text-white">Edit Step</h2>
+                <div>
+                    <label for="type-select" class="block text-sm font-medium text-gray-300 mb-1">Type</label>
+                    <select id="type-select" class="w-full p-2 rounded-md bg-gray-900 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                        <option value="impulse">impulse</option>
+                        <option value="chain">chain</option>
+                        <option value="repeating">repeating</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="conditional-checkbox" class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500 checked:bg-blue-500">
+                        <span class="text-sm text-gray-300">Conditional</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="auto-checkbox" checked class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500 checked:bg-blue-500">
+                        <span class="text-sm text-gray-300">Auto (no redstone)</span>
+                    </label>
+                </div>
+                <div>
+                    <label for="delay-input" class="block text-sm font-medium text-gray-300 mb-1">Delay (ticks)</label>
+                    <input type="number" id="delay-input" value="0" min="0" class="w-full p-2 rounded-md bg-gray-900 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100">
+                </div>
+                <div>
+                    <label for="command-textarea" class="block text-sm font-medium text-gray-300 mb-1">Command (no leading slash)</label>
+                    <textarea id="command-textarea" rows="4" class="w-full p-2 rounded-md bg-gray-900 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-100"></textarea>
+                </div>
+
+                <!-- Template Buttons -->
+                <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-600">
+                    <button class="bg-gray-600 hover:bg-gray-500 text-sm text-white font-semibold py-1 px-3 rounded-md transition-colors duration-200" onclick="insertTemplate('say Hello')">say</button>
+                    <button class="bg-gray-600 hover:bg-gray-500 text-sm text-white font-semibold py-1 px-3 rounded-md transition-colors duration-200" onclick="insertTemplate('tellraw @a {\"text\":\"Hi\",\"color\":\"gold\"}')">tellraw</button>
+                    <button class="bg-gray-600 hover:bg-gray-500 text-sm text-white font-semibold py-1 px-3 rounded-md transition-colors duration-200" onclick="insertTemplate('title @a title {\"text\":\"Go!\",\"bold\":true}')">title</button>
+                    <button class="bg-gray-600 hover:bg-gray-500 text-sm text-white font-semibold py-1 px-3 rounded-md transition-colors duration-200" onclick="insertTemplate('scoreboard objectives add game dummy')">score obj</button>
+                    <button class="bg-gray-600 hover:bg-gray-500 text-sm text-white font-semibold py-1 px-3 rounded-md transition-colors duration-200" onclick="insertTemplate('tp @p ~ ~ ~')">tp</button>
+                    <button class="bg-gray-600 hover:bg-gray-500 text-sm text-white font-semibold py-1 px-3 rounded-md transition-colors duration-200" onclick="insertTemplate('give @p minecraft:diamond_sword')">give</button>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col space-y-2 mt-auto">
+                    <button id="add-step-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Add Step</button>
+                    <button id="update-step-btn" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Update Selected</button>
+                    <div class="flex space-x-2">
+                        <button id="move-up-btn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Move Up</button>
+                        <button id="move-down-btn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Move Down</button>
+                    </div>
+                    <button id="delete-step-btn" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Delete Selected</button>
+                    <button id="export-btn" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Export Commands</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content - JSON Helper -->
+        <div id="json-tab-content" class="tab-content flex flex-col">
+            <div id="json-segments-container" class="bg-gray-700 p-6 rounded-lg mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-white">Segments</h2>
+                <!-- Segments will be added here dynamically -->
+            </div>
+            
+            <div class="flex space-x-4 mb-4">
+                <button id="add-segment-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Add Segment</button>
+                <button id="copy-tellraw-btn" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Copy tellraw</button>
+                <button id="copy-title-btn" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">Copy title</button>
+            </div>
+            
+            <textarea id="json-output" rows="10" readonly class="w-full p-4 rounded-md bg-gray-900 border border-gray-600 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+    </div>
+
+    <!-- Message Box -->
+    <div id="message-box" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 id="message-title" class="text-xl font-semibold mb-2 text-white"></h3>
+            <p id="message-text" class="text-gray-300 mb-4"></p>
+            <div class="flex justify-end">
+                <button onclick="hideMessage()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data and state
+        let steps = [];
+        let selectedStepIndex = -1;
+        const jsonSegments = [];
+        const BLOCK_TYPES = {
+            "impulse": "minecraft:command_block",
+            "chain": "minecraft:chain_command_block",
+            "repeating": "minecraft:repeating_command_block",
+        };
+        const FACING_CYCLE = ["north", "south", "west", "east", "up", "down"];
+
+        // UI Element references
+        const builderTabBtn = document.getElementById('builder-tab-btn');
+        const jsonTabBtn = document.getElementById('json-tab-btn');
+        const builderTabContent = document.getElementById('builder-tab-content');
+        const jsonTabContent = document.getElementById('json-tab-content');
+        const originInput = document.getElementById('origin-input');
+        const facingSelect = document.getElementById('facing-select');
+        const trackOutputCheckbox = document.getElementById('track-output-checkbox');
+        const placeLeverCheckbox = document.getElementById('place-lever-checkbox');
+        const clearAreaCheckbox = document.getElementById('clear-area-checkbox');
+        const clipboardAutoCheckbox = document.getElementById('clipboard-auto-checkbox');
+        const stepsTableBody = document.getElementById('steps-table-body');
+        const typeSelect = document.getElementById('type-select');
+        const conditionalCheckbox = document.getElementById('conditional-checkbox');
+        const autoCheckbox = document.getElementById('auto-checkbox');
+        const delayInput = document.getElementById('delay-input');
+        const commandTextarea = document.getElementById('command-textarea');
+        const addStepBtn = document.getElementById('add-step-btn');
+        const updateStepBtn = document.getElementById('update-step-btn');
+        const moveUpBtn = document.getElementById('move-up-btn');
+        const moveDownBtn = document.getElementById('move-down-btn');
+        const deleteStepBtn = document.getElementById('delete-step-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const jsonSegmentsContainer = document.getElementById('json-segments-container');
+        const addSegmentBtn = document.getElementById('add-segment-btn');
+        const copyTellrawBtn = document.getElementById('copy-tellraw-btn');
+        const copyTitleBtn = document.getElementById('copy-title-btn');
+        const jsonOutputTextarea = document.getElementById('json-output');
+        const messageBox = document.getElementById('message-box');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+
+        // Helper functions
+        const directionToOffset = (facing) => {
+            if (facing === "east") return [1, 0, 0];
+            if (facing === "west") return [-1, 0, 0];
+            if (facing === "south") return [0, 0, 1];
+            if (facing === "north") return [0, 0, -1];
+            if (facing === "up") return [0, 1, 0];
+            if (facing === "down") return [0, -1, 0];
+            return [1, 0, 0];
+        };
+
+        const sanitizeCommand = (cmd) => {
+            cmd = cmd.trim();
+            if (cmd.startsWith("/")) {
+                cmd = cmd.substring(1);
+            }
+            return cmd;
+        };
+
+        const addCoordinates = (a, delta) => {
+            if (a.startsWith("~")) {
+                const rest = a.substring(1).trim();
+                const restv = rest === "" ? 0 : parseFloat(rest);
+                const result = restv + delta;
+                return `~${result !== 0 ? result : ''}`;
+            } else {
+                return String(parseInt(a) + delta);
+            }
+        };
+
+        const getAdjacentSide = (pos, facing) => {
+            const [x, y, z] = pos;
+            if (facing === "east") return `${addCoordinates(x, -1)} ${y} ${z}`;
+            if (facing === "west") return `${addCoordinates(x, 1)} ${y} ${z}`;
+            if (facing === "south") return `${x} ${y} ${addCoordinates(z, -1)}`;
+            if (facing === "north") return `${x} ${y} ${addCoordinates(z, 1)}`;
+            if (facing === "up") return `${x} ${addCoordinates(y, -1)} ${z}`;
+            if (facing === "down") return `${x} ${addCoordinates(y, 1)} ${z}`;
+            return `${x} ${y} ${z}`;
+        };
+        
+        const formatNbt = (nbt) => {
+            const parts = [];
+            for (const key in nbt) {
+                const value = nbt[key];
+                if (typeof value === 'string') {
+                    parts.push(`${key}:"${value.replace(/"/g, '\\"')}"`);
+                } else if (typeof value === 'boolean') {
+                    parts.push(`${key}:${value ? 1 : 0}`);
+                } else {
+                    parts.push(`${key}:${value}`);
+                }
+            }
+            return `{${parts.join(',')}}`;
+        };
+
+        const showMessage = (title, message) => {
+            messageBox.classList.remove('hidden');
+            messageTitle.textContent = title;
+            messageText.textContent = message;
+        };
+
+        const hideMessage = () => {
+            messageBox.classList.add('hidden');
+        };
+
+        // Main app logic
+        const refreshStepsTable = () => {
+            stepsTableBody.innerHTML = '';
+            steps.forEach((step, index) => {
+                const row = stepsTableBody.insertRow();
+                row.classList.add('bg-gray-800', 'border-b', 'border-gray-700', 'hover:bg-gray-900', 'cursor-pointer');
+                if (index === selectedStepIndex) {
+                    row.classList.add('bg-gray-600', 'hover:bg-gray-600');
+                }
+                row.dataset.index = index;
+                row.onclick = () => selectStep(index);
+                row.insertCell(0).textContent = step.type;
+                row.insertCell(1).textContent = step.conditional ? "yes" : "no";
+                row.insertCell(2).textContent = step.auto ? "auto" : "redstone";
+                row.insertCell(3).textContent = step.delay;
+                row.insertCell(4).textContent = step.command;
+            });
+        };
+
+        const selectStep = (index) => {
+            selectedStepIndex = index;
+            const step = steps[index];
+            if (step) {
+                typeSelect.value = step.type;
+                conditionalCheckbox.checked = step.conditional;
+                autoCheckbox.checked = step.auto;
+                delayInput.value = step.delay;
+                commandTextarea.value = step.command;
+            }
+            refreshStepsTable();
+        };
+
+        const addStep = () => {
+            const delay = parseInt(delayInput.value);
+            if (isNaN(delay) || delay < 0) {
+                showMessage("Invalid Delay", "Delay must be a non-negative integer.");
+                return;
+            }
+            const command = sanitizeCommand(commandTextarea.value);
+            if (!command) {
+                showMessage("Invalid Command", "Command cannot be empty.");
+                return;
+            }
+            steps.push({
+                type: typeSelect.value,
+                conditional: conditionalCheckbox.checked,
+                auto: autoCheckbox.checked,
+                delay: delay,
+                command: command
+            });
+            refreshStepsTable();
+            commandTextarea.value = ''; // Clear form after adding
+            selectedStepIndex = steps.length - 1; // Select the new step
+            refreshStepsTable();
+        };
+
+        const updateSelectedStep = () => {
+            if (selectedStepIndex === -1) {
+                showMessage("Update Step", "Please select a step to update.");
+                return;
+            }
+            const delay = parseInt(delayInput.value);
+            if (isNaN(delay) || delay < 0) {
+                showMessage("Invalid Delay", "Delay must be a non-negative integer.");
+                return;
+            }
+            const command = sanitizeCommand(commandTextarea.value);
+            if (!command) {
+                showMessage("Invalid Command", "Command cannot be empty.");
+                return;
+            }
+            steps[selectedStepIndex] = {
+                type: typeSelect.value,
+                conditional: conditionalCheckbox.checked,
+                auto: autoCheckbox.checked,
+                delay: delay,
+                command: command
+            };
+            refreshStepsTable();
+        };
+
+        const deleteSelectedStep = () => {
+            if (selectedStepIndex === -1) {
+                return;
+            }
+            steps.splice(selectedStepIndex, 1);
+            selectedStepIndex = -1;
+            refreshStepsTable();
+        };
+
+        const moveSelectedStep = (delta) => {
+            if (selectedStepIndex === -1) return;
+            const newIndex = selectedStepIndex + delta;
+            if (newIndex >= 0 && newIndex < steps.length) {
+                [steps[selectedStepIndex], steps[newIndex]] = [steps[newIndex], steps[selectedStepIndex]];
+                selectedStepIndex = newIndex;
+                refreshStepsTable();
+            }
+        };
+
+        const buildExportCommands = () => {
+            if (steps.length === 0) {
+                showMessage("Export", "Add at least one step to export.");
+                return;
+            }
+
+            const origin = originInput.value.trim().split(/\s+/);
+            if (origin.length !== 3) {
+                showMessage("Invalid Origin", "Origin must be three space-separated coordinates, e.g. '~ ~ ~' or '100 64 -20'.");
+                return;
+            }
+            const facing = facingSelect.value;
+            const trackOutput = trackOutputCheckbox.checked;
+            const placeLever = placeLeverCheckbox.checked;
+            const buildClearArea = clearAreaCheckbox.checked;
+
+            const [ox, oy, oz] = origin;
+            const [dx, dy, dz] = directionToOffset(facing);
+            const lines = [];
+            
+            // Timer setup and overhead
+            const hasDelay = steps.some(step => step.delay > 0);
+            let timerOverhead = 0;
+            if (hasDelay) {
+                timerOverhead = 3;
+                lines.push(`setblock ${ox} ${oy} ${oz} minecraft:command_block[facing=${facing}] replace ${formatNbt({ Command: "scoreboard objectives add cb_tick dummy", auto: 1, TrackOutput: 0 })}`);
+                lines.push(`setblock ${addCoordinates(ox, dx)} ${addCoordinates(oy, dy)} ${addCoordinates(oz, dz)} minecraft:repeating_command_block[facing=${facing}] replace ${formatNbt({ Command: "scoreboard players add cb_tick dummy 1", auto: 1, TrackOutput: 0 })}`);
+                lines.push(`setblock ${addCoordinates(ox, dx * 2)} ${addCoordinates(oy, dy * 2)} ${addCoordinates(oz, dz * 2)} minecraft:chain_command_block[facing=${facing}] replace ${formatNbt({ Command: "execute unless score #_delay_init cb_tick matches 0 run scoreboard players set #_delay_init cb_tick 1", auto: 1, TrackOutput: 0 })}`);
+            }
+
+            let cursor = [...origin];
+            let placedCount = 0;
+            if (hasDelay) {
+                cursor = [addCoordinates(ox, dx * timerOverhead), addCoordinates(oy, dy * timerOverhead), addCoordinates(oz, dz * timerOverhead)];
+                placedCount = timerOverhead;
+            }
+            
+            const totalSteps = steps.length;
+            const isFirstImpulse = (step, index) => step.type === "impulse" && !steps.slice(0, index).some(s => s.type === "impulse");
+            
+            steps.forEach((step, index) => {
+                let currentCursor = [...cursor];
+                const blockId = BLOCK_TYPES[step.type];
+                
+                if (step.delay > 0) {
+                    // Delay logic
+                    const timerPrefix = "cbt";
+                    const idxName = `${timerPrefix}${index}`;
+                    
+                    // 1) Set timer for this step
+                    let state = `[facing=${facing},conditional=false]`;
+                    let nbt = { Command: `execute if score ${idxName} cb_tick matches -1 run scoreboard players set ${idxName} cb_tick cb_tick`, auto: 1, TrackOutput: trackOutput ? 1 : 0 };
+                    lines.push(`setblock ${currentCursor[0]} ${currentCursor[1]} ${currentCursor[2]} ${BLOCK_TYPES.chain}${state} replace ${formatNbt(nbt)}`);
+                    currentCursor = [addCoordinates(currentCursor[0], dx), addCoordinates(currentCursor[1], dy), addCoordinates(currentCursor[2], dz)];
+                    
+                    // 2) Gated command
+                    const gatedCmd = `execute if score cb_tick cb_tick >= ${idxName} cb_tick run ${sanitizeCommand(step.command)}`;
+                    state = `[facing=${facing},conditional=true]`;
+                    nbt = { Command: gatedCmd, auto: 1, TrackOutput: trackOutput ? 1 : 0 };
+                    lines.push(`setblock ${currentCursor[0]} ${currentCursor[1]} ${currentCursor[2]} ${BLOCK_TYPES.chain}${state} replace ${formatNbt(nbt)}`);
+                    currentCursor = [addCoordinates(currentCursor[0], dx), addCoordinates(currentCursor[1], dy), addCoordinates(currentCursor[2], dz)];
+                } else {
+                    // Normal step
+                    let state = `[facing=${facing},conditional=${step.conditional}]`;
+                    let nbt = { Command: sanitizeCommand(step.command), auto: step.auto ? 1 : 0, TrackOutput: trackOutput ? 1 : 0 };
+                    
+                    // Handle Impulse block with redstone power
+                    if (step.type === "impulse" && !step.auto) {
+                        nbt.auto = 0; // Ensure it's off if it's the first impulse
+                    }
+                    
+                    lines.push(`setblock ${currentCursor[0]} ${currentCursor[1]} ${currentCursor[2]} ${blockId}${state} replace ${formatNbt(nbt)}`);
+                    currentCursor = [addCoordinates(currentCursor[0], dx), addCoordinates(currentCursor[1], dy), addCoordinates(currentCursor[2], dz)];
+                }
+                
+                cursor = currentCursor;
+                placedCount++;
+            });
+
+            // Place a redstone block to activate the first block
+            if (placeLeverCheckbox.checked && steps.length > 0) {
+                const firstImpulseIndex = steps.findIndex(step => step.type === 'impulse');
+                if(firstImpulseIndex !== -1) {
+                    const firstImpulsePos = [addCoordinates(ox, dx * firstImpulseIndex), addCoordinates(oy, dy * firstImpulseIndex), addCoordinates(oz, dz * firstImpulseIndex)];
+                    const leverPos = getAdjacentSide(firstImpulsePos, facing);
+                    lines.push(`setblock ${leverPos} redstone_block replace`);
+                }
+            }
+
+            return lines;
+        };
+
+        const exportCommands = () => {
+            const commands = buildExportCommands();
+            if (commands.length > 0 && clipboardAutoCheckbox.checked) {
+                const textToCopy = commands.map(cmd => `/${cmd}`).join('\n');
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        showMessage("Success", "Commands copied to clipboard!");
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        showMessage("Error", "Failed to copy to clipboard. Your browser may not support this. Please manually copy from console.");
+                    });
+                } else {
+                    // Fallback for older browsers
+                    const dummy = document.createElement("textarea");
+                    document.body.appendChild(dummy);
+                    dummy.value = textToCopy;
+                    dummy.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(dummy);
+                    showMessage("Success", "Commands copied to clipboard (using fallback).");
+                }
+            }
+        };
+
+        // JSON Helper functions
+        const renderJsonOutput = () => {
+            const segments = [];
+            jsonSegments.forEach(seg => {
+                const comp = { text: seg.text.value };
+                if (seg.color.value !== 'white') comp.color = seg.color.value;
+                if (seg.bold.checked) comp.bold = true;
+                if (seg.italic.checked) comp.italic = true;
+                if (seg.underlined.checked) comp.underlined = true;
+                segments.push(comp);
+            });
+            const jsonStr = JSON.stringify(segments);
+            jsonOutputTextarea.value = `tellraw @a ${jsonStr}\n\ntitle @a title ${jsonStr}`;
+        };
+
+        const addJsonSegment = () => {
+            const container = document.createElement('div');
+            container.classList.add('flex', 'flex-wrap', 'items-center', 'space-x-2', 'mb-2');
+            
+            const textInput = document.createElement('input');
+            textInput.type = 'text';
+            textInput.placeholder = 'Text';
+            textInput.classList.add('p-2', 'rounded-md', 'bg-gray-900', 'border', 'border-gray-600', 'text-gray-100', 'flex-1', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
+            
+            const colorSelect = document.createElement('select');
+            ['white', 'yellow', 'gold', 'red', 'green', 'blue', 'aqua', 'light_purple', 'gray', 'black'].forEach(color => {
+                const option = document.createElement('option');
+                option.value = color;
+                option.textContent = color;
+                colorSelect.appendChild(option);
+            });
+            colorSelect.classList.add('p-2', 'rounded-md', 'bg-gray-900', 'border', 'border-gray-600', 'text-gray-100', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
+
+            const boldCheckbox = document.createElement('input');
+            boldCheckbox.type = 'checkbox';
+            boldCheckbox.classList.add('h-4', 'w-4', 'rounded', 'text-blue-500', 'bg-gray-900', 'border-gray-600', 'focus:ring-blue-500');
+            const boldLabel = document.createElement('label');
+            boldLabel.classList.add('flex', 'items-center', 'space-x-1', 'text-sm', 'text-gray-300', 'cursor-pointer');
+            boldLabel.innerHTML = `<input type="checkbox" class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500"><span>bold</span>`;
+
+            const italicCheckbox = document.createElement('input');
+            italicCheckbox.type = 'checkbox';
+            italicCheckbox.classList.add('h-4', 'w-4', 'rounded', 'text-blue-500', 'bg-gray-900', 'border-gray-600', 'focus:ring-blue-500');
+            const italicLabel = document.createElement('label');
+            italicLabel.classList.add('flex', 'items-center', 'space-x-1', 'text-sm', 'text-gray-300', 'cursor-pointer');
+            italicLabel.innerHTML = `<input type="checkbox" class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500"><span>italic</span>`;
+
+            const underlineCheckbox = document.createElement('input');
+            underlineCheckbox.type = 'checkbox';
+            underlineCheckbox.classList.add('h-4', 'w-4', 'rounded', 'text-blue-500', 'bg-gray-900', 'border-gray-600', 'focus:ring-blue-500');
+            const underlineLabel = document.createElement('label');
+            underlineLabel.classList.add('flex', 'items-center', 'space-x-1', 'text-sm', 'text-gray-300', 'cursor-pointer');
+            underlineLabel.innerHTML = `<input type="checkbox" class="h-4 w-4 rounded text-blue-500 bg-gray-900 border-gray-600 focus:ring-blue-500"><span>underline</span>`;
+
+            container.appendChild(textInput);
+            container.appendChild(colorSelect);
+            container.appendChild(boldLabel);
+            container.appendChild(italicLabel);
+            container.appendChild(underlineLabel);
+            
+            jsonSegmentsContainer.appendChild(container);
+            
+            const segData = {
+                text: textInput,
+                color: colorSelect,
+                bold: boldLabel.querySelector('input'),
+                italic: italicLabel.querySelector('input'),
+                underlined: underlineLabel.querySelector('input')
+            };
+            jsonSegments.push(segData);
+            
+            const render = () => renderJsonOutput();
+            textInput.addEventListener('input', render);
+            colorSelect.addEventListener('change', render);
+            segData.bold.addEventListener('change', render);
+            segData.italic.addEventListener('change', render);
+            segData.underlined.addEventListener('change', render);
+            
+            render();
+        };
+
+        const copyText = (elementId) => {
+            const text = document.getElementById(elementId).value.trim();
+            if (!text) {
+                showMessage("Copy Failed", "Nothing to copy.");
+                return;
+            }
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showMessage("Copied", "Command copied to clipboard!");
+                });
+            } else {
+                const dummy = document.createElement("textarea");
+                document.body.appendChild(dummy);
+                dummy.value = text;
+                dummy.select();
+                document.execCommand("copy");
+                document.body.removeChild(dummy);
+                showMessage("Copied", "Command copied to clipboard (using fallback).");
+            }
+        };
+
+        // Event listeners
+        builderTabBtn.addEventListener('click', () => {
+            builderTabBtn.classList.add('bg-gray-700', 'text-white');
+            builderTabBtn.classList.remove('text-gray-400', 'hover:bg-gray-600');
+            jsonTabBtn.classList.remove('bg-gray-700', 'text-white');
+            jsonTabBtn.classList.add('text-gray-400', 'hover:bg-gray-600');
+            builderTabContent.classList.add('active');
+            jsonTabContent.classList.remove('active');
+        });
+
+        jsonTabBtn.addEventListener('click', () => {
+            jsonTabBtn.classList.add('bg-gray-700', 'text-white');
+            jsonTabBtn.classList.remove('text-gray-400', 'hover:bg-gray-600');
+            builderTabBtn.classList.remove('bg-gray-700', 'text-white');
+            builderTabBtn.classList.add('text-gray-400', 'hover:bg-gray-600');
+            jsonTabContent.classList.add('active');
+            builderTabContent.classList.remove('active');
+        });
+
+        addStepBtn.addEventListener('click', addStep);
+        updateStepBtn.addEventListener('click', updateSelectedStep);
+        deleteStepBtn.addEventListener('click', deleteSelectedStep);
+        moveUpBtn.addEventListener('click', () => moveSelectedStep(-1));
+        moveDownBtn.addEventListener('click', () => moveSelectedStep(1));
+        exportBtn.addEventListener('click', exportCommands);
+        
+        // JSON Helper events
+        addSegmentBtn.addEventListener('click', addJsonSegment);
+        copyTellrawBtn.addEventListener('click', () => copyText('json-output'));
+        copyTitleBtn.addEventListener('click', () => {
+            const lines = jsonOutputTextarea.value.split('\n');
+            if (lines.length > 1) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(lines[2]).then(() => {
+                        showMessage("Copied", "Title command copied to clipboard!");
+                    });
+                }
+            } else {
+                showMessage("Copy Failed", "Nothing to copy.");
+            }
+        });
+        
+        // Initial setup
+        refreshStepsTable();
+        addJsonSegment();
+        
+        function insertTemplate(text) {
+            commandTextarea.value = text;
+        }
+
+    </script>
+</body>
+</html>
